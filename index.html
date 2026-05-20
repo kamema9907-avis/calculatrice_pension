@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculatrice de Rentes - Fonds de Pension</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: rgba(30, 41, 59, 0.7);
+            --panel-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-primary: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.5);
+            --accent-success: #10b981;
+            --accent-warning: #f59e0b;
+            --accent-danger: #ef4444;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top left, #1e293b, var(--bg-color));
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2vh 2vw;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 24px;
+            width: 100%;
+            max-width: 1400px;
+            height: 100%;
+            max-height: 900px;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--panel-border);
+            border-radius: 20px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            overflow-y: auto;
+        }
+        
+        /* Cacher la scrollbar mais garder le scroll si jamais ça déborde sur petit écran */
+        .panel::-webkit-scrollbar { width: 6px; }
+        .panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+
+        .header-title {
+            font-size: 1.3rem;
+            font-weight: 800;
+            margin-bottom: 16px;
+            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .form-group { margin-bottom: 12px; }
+
+        .form-group label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-control {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--panel-border);
+            color: var(--text-main);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+        
+        .input-row { display: flex; gap: 12px; }
+        .input-row > div { flex: 1; }
+
+        .btn-calculate {
+            margin-top: auto;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 14px 0 var(--accent-glow);
+            width: 100%;
+        }
+
+        .btn-calculate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px 0 var(--accent-glow);
+        }
+
+        /* Checkbox custom styles */
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            text-transform: none !important;
+            color: var(--text-main) !important;
+            font-weight: 400 !important;
+            font-size: 0.9rem !important;
+            letter-spacing: normal !important;
+        }
+        .checkbox-label input { margin-right: 8px; transform: scale(1.1); }
+
+        /* Results Styles */
+        .results-panel { display: flex; flex-direction: column; overflow: hidden; }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .card-title { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; margin-bottom: 6px; }
+        .card-value { font-size: 1.5rem; font-weight: 800; color: var(--text-main); }
+        .card-value.net { color: var(--accent-success); }
+        .card-value.danger { color: var(--accent-danger); font-size: 1.1rem; }
+
+        .timeline-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; flex: 1; min-height: 0; }
+
+        .timeline-phase {
+            background: rgba(255, 255, 255, 0.03);
+            border-top: 4px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .timeline-phase.active-phase { border-top-color: var(--accent-primary); background: rgba(59, 130, 246, 0.05); }
+
+        .phase-title {
+            font-size: 1rem; font-weight: 600; margin-bottom: 12px; color: #e2e8f0;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .phase-badge { font-size: 0.65rem; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 8px; }
+        .breakdown-list { list-style: none; flex: 1; }
+        .breakdown-item { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.85rem; border-bottom: 1px dashed rgba(255,255,255,0.05); padding-bottom: 3px; }
+        .breakdown-item span:last-child { font-weight: 600; }
+        .breakdown-item.govt-income { color: #a78bfa; }
+
+        .phase-total { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; font-weight: 800; font-size: 1.05rem; }
+        .phase-net { margin-top: 4px; display: flex; justify-content: space-between; font-weight: 600; font-size: 0.95rem; color: var(--accent-success); }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-in { animation: fadeIn 0.4s ease-out forwards; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Panneau de saisie -->
+        <div class="panel">
+            <div class="header-title">Paramètres du Travailleur</div>
+            
+            <div class="input-row">
+                <div class="form-group">
+                    <label>Âge (Années)</label>
+                    <input type="number" id="in_age_years" class="form-control" value="58" min="50" max="75">
+                </div>
+                <div class="form-group">
+                    <label>Âge (Mois)</label>
+                    <input type="number" id="in_age_months" class="form-control" value="0" min="0" max="11">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Années de service</label>
+                <input type="number" id="in_service" class="form-control" value="32" min="0" step="0.5">
+            </div>
+
+            <div class="input-row">
+                <div class="form-group">
+                    <label>Rente ($/an de service)</label>
+                    <input type="number" id="in_base_rate" class="form-control" value="50" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Impôt estimé (%)</label>
+                    <input type="number" id="in_tax_rate" class="form-control" value="30" min="0" max="100" step="0.1">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Max Mensuel RRQ actuel ($)</label>
+                <input type="number" id="in_rrq_max" class="form-control" value="1364.60" min="0">
+            </div>
+
+            <!-- NOUVELLE SECTION : Compensations gouvernementales -->
+            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--panel-border);">
+                <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase;">
+                    Revenus Gouvernementaux
+                </label>
+                
+                <!-- RRQ -->
+                <div style="margin-bottom: 8px;">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="chk_rrq_60" onchange="toggleInputs()"> 
+                        Demander la RRQ à 60 ans
+                    </label>
+                    <div id="rrq_input_container" style="display: none; margin-top: 6px; margin-left: 24px;">
+                        <div style="margin-bottom: 6px;">
+                            <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2px; display:block;">Votre RRQ estimée à 65 ans ($)</label>
+                            <input type="number" id="in_rrq_65_estim" class="form-control" value="1000" min="0" style="padding: 4px 8px; font-size:0.85rem;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2px; display:block;">% conservé à 60 ans (après pénalité)</label>
+                            <input type="number" id="in_rrq_percent" class="form-control" value="64" min="0" max="100" style="padding: 4px 8px; font-size:0.85rem;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SV -->
+                <div>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="chk_sv_65" onchange="toggleInputs()"> 
+                        Demander la SV à 65 ans
+                    </label>
+                    <div id="sv_input_container" style="display: none; margin-top: 6px; margin-left: 24px;">
+                        <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2px; display:block;">Montant SV ($/mois)</label>
+                        <input type="number" id="in_sv_amount" class="form-control" value="713.34" min="0" style="padding: 4px 8px; font-size:0.85rem;">
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-calculate" onclick="calculate()" style="margin-top: 16px;">Calculer les Rentes</button>
+        </div>
+
+        <!-- Panneau des résultats -->
+        <div class="panel results-panel">
+            <div class="header-title" style="margin-bottom: 16px;">Tableau de Bord des Rentes</div>
+            
+            <div class="summary-cards">
+                <div class="card animate-in" style="animation-delay: 0.1s;">
+                    <div class="card-title">Rente de Base (Brut)</div>
+                    <div class="card-value" id="out_base_pension">$0</div>
+                </div>
+                <div class="card animate-in" style="animation-delay: 0.2s;">
+                    <div class="card-title">Statut Pénalité</div>
+                    <div class="card-value danger" id="out_penalty">Aucune</div>
+                </div>
+                <div class="card animate-in" style="animation-delay: 0.3s;">
+                    <div class="card-title">Éligibilité Ponts</div>
+                    <div class="card-value" style="font-size: 1.1rem; color: #a78bfa;" id="out_bridges">Calcul en cours...</div>
+                </div>
+            </div>
+
+            <h3 style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px; text-transform: uppercase;">Projection Mensuelle par Période</h3>
+            
+            <div class="timeline-grid">
+                <!-- Phase 1 -->
+                <div class="timeline-phase active-phase animate-in" style="animation-delay: 0.4s;" id="phase_1">
+                    <div class="phase-title">Jusqu'à 60 ans <span class="phase-badge">Phase 1</span></div>
+                    <ul class="breakdown-list">
+                        <li class="breakdown-item"><span>Rente de base</span> <span id="p1_base">$0</span></li>
+                        <li class="breakdown-item" id="p1_sv_container"><span>Pont SV</span> <span id="p1_sv">$0</span></li>
+                        <li class="breakdown-item" id="p1_rrq_container"><span>Pont RRQ (70%)</span> <span id="p1_rrq">$0</span></li>
+                    </ul>
+                    <div class="phase-total"><span>Total Brut</span> <span id="p1_total_brut">$0</span></div>
+                    <div class="phase-net"><span>Total Net</span> <span id="p1_total_net">$0</span></div>
+                </div>
+
+                <!-- Phase 2 -->
+                <div class="timeline-phase animate-in" style="animation-delay: 0.5s;" id="phase_2">
+                    <div class="phase-title">De 60 à 65 ans <span class="phase-badge">Phase 2</span></div>
+                    <ul class="breakdown-list">
+                        <li class="breakdown-item"><span>Rente de base</span> <span id="p2_base">$0</span></li>
+                        <li class="breakdown-item" id="p2_sv_container"><span>Pont SV</span> <span id="p2_sv">$0</span></li>
+                        <li class="breakdown-item govt-income" id="p2_rrq_govt_container" style="display:none;"><span>RRQ Gouv.</span> <span id="p2_rrq_govt">$0</span></li>
+                    </ul>
+                    <div class="phase-total"><span>Total Brut</span> <span id="p2_total_brut">$0</span></div>
+                    <div class="phase-net"><span>Total Net</span> <span id="p2_total_net">$0</span></div>
+                </div>
+
+                <!-- Phase 3 -->
+                <div class="timeline-phase animate-in" style="animation-delay: 0.6s;" id="phase_3">
+                    <div class="phase-title">65 ans et + <span class="phase-badge">Phase 3</span></div>
+                    <ul class="breakdown-list">
+                        <li class="breakdown-item"><span>Rente de base</span> <span id="p3_base">$0</span></li>
+                        <li class="breakdown-item govt-income" id="p3_rrq_govt_container" style="display:none;"><span>RRQ Gouv.</span> <span id="p3_rrq_govt">$0</span></li>
+                        <li class="breakdown-item govt-income" id="p3_sv_govt_container" style="display:none;"><span>SV Gouv.</span> <span id="p3_sv_govt">$0</span></li>
+                        <li class="breakdown-item" id="p3_end_msg" style="color: var(--text-muted); font-style: italic; border: none;"><span>Fin des ponts de l'employeur</span></li>
+                    </ul>
+                    <div class="phase-total"><span>Total Brut</span> <span id="p3_total_brut">$0</span></div>
+                    <div class="phase-net"><span>Total Net</span> <span id="p3_total_net">$0</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CONSTANTES = {
+            AGE_NORMAL_RETRAITE: 65,
+            TAUX_PENALITE_MENSUELLE: 0.0025,
+            MONTANT_PONT_SV_PAR_ANNEE: 21.50,
+            TAUX_PONT_RRQ: 0.70
+        };
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD' }).format(amount);
+        }
+
+        function toggleInputs() {
+            document.getElementById('rrq_input_container').style.display = document.getElementById('chk_rrq_60').checked ? 'block' : 'none';
+            document.getElementById('sv_input_container').style.display = document.getElementById('chk_sv_65').checked ? 'block' : 'none';
+        }
+
+        function calculate() {
+            // 1. Récupération des entrées
+            const ageYears = parseInt(document.getElementById('in_age_years').value);
+            const ageMonths = parseInt(document.getElementById('in_age_months').value);
+            const service = parseFloat(document.getElementById('in_service').value);
+            const baseRate = parseFloat(document.getElementById('in_base_rate').value);
+            const taxRate = parseFloat(document.getElementById('in_tax_rate').value) / 100;
+            const rrqMax = parseFloat(document.getElementById('in_rrq_max').value);
+
+            // Options Gouvernementales
+            const askRRQ = document.getElementById('chk_rrq_60').checked;
+            const rrq65Estim = parseFloat(document.getElementById('in_rrq_65_estim').value) || 0;
+            const rrqPercent = parseFloat(document.getElementById('in_rrq_percent').value) / 100 || 0;
+            const askSV = document.getElementById('chk_sv_65').checked;
+            const svAmount = parseFloat(document.getElementById('in_sv_amount').value) || 0;
+
+            const totalAgeInMonths = (ageYears * 12) + ageMonths;
+            const targetAgeInMonths = CONSTANTES.AGE_NORMAL_RETRAITE * 12;
+
+            // 2. Calcul de la rente de base et Pénalité
+            let basePensionMensuelle = service * baseRate;
+            let penaltyPercent = 0;
+            let hasPenalty = false;
+
+            let isUnreduced = false;
+            if (ageYears >= CONSTANTES.AGE_NORMAL_RETRAITE) {
+                isUnreduced = true;
+            } else if (ageYears >= 60 && service >= 20) {
+                isUnreduced = true;
+            } else if (ageYears >= 58 && service >= 32) {
+                isUnreduced = true;
+            }
+
+            if (!isUnreduced) {
+                const monthsEarly = targetAgeInMonths - totalAgeInMonths; // Calcul depuis 65 ans
+                if (monthsEarly > 0) {
+                    penaltyPercent = monthsEarly * CONSTANTES.TAUX_PENALITE_MENSUELLE;
+                    if (penaltyPercent > 1) penaltyPercent = 1; 
+                    
+                    basePensionMensuelle = basePensionMensuelle * (1 - penaltyPercent);
+                    hasPenalty = true;
+                }
+            }
+
+            // 3. Évaluation des Ponts (Règles d'affaires)
+            let isEligibleSV = false;
+            let isEligibleRRQ = false;
+            let bridgeSVAmt = 0;
+            let bridgeRRQAmt = 0;
+
+            if (ageYears >= 58 && service >= 32) {
+                isEligibleSV = true;
+                if (ageYears < 60) {
+                    isEligibleRRQ = true;
+                }
+            } else if (ageYears >= 60 && service >= 20) {
+                isEligibleSV = true;
+            }
+
+            if (isEligibleSV) bridgeSVAmt = CONSTANTES.MONTANT_PONT_SV_PAR_ANNEE * service;
+            if (isEligibleRRQ) bridgeRRQAmt = rrqMax * CONSTANTES.TAUX_PONT_RRQ;
+
+            // 4. Sommaire
+            document.getElementById('out_base_pension').innerText = formatCurrency(basePensionMensuelle);
+            
+            const penaltyEl = document.getElementById('out_penalty');
+            if (hasPenalty) {
+                penaltyEl.innerText = '-' + (penaltyPercent * 100).toFixed(1) + '%';
+                penaltyEl.style.color = 'var(--accent-danger)';
+            } else {
+                penaltyEl.innerText = 'Aucune';
+                penaltyEl.style.color = 'var(--accent-success)';
+            }
+
+            let bridgeText = [];
+            if (isEligibleSV) bridgeText.push('Pont SV');
+            if (isEligibleRRQ) bridgeText.push('Pont RRQ');
+            document.getElementById('out_bridges').innerText = bridgeText.length > 0 ? bridgeText.join(' + ') : 'Aucun pont';
+
+            // Montants Gouvernementaux optionnels
+            const rrqGovtMensuel = askRRQ ? (rrq65Estim * rrqPercent) : 0;
+            const svGovtMensuel = askSV ? svAmount : 0;
+
+            // 5. Timeline - Phase 1 (Jusqu'à 60 ans)
+            const p1_sv = isEligibleSV ? bridgeSVAmt : 0;
+            const p1_rrq = isEligibleRRQ ? bridgeRRQAmt : 0;
+            const p1_brut = basePensionMensuelle + p1_sv + p1_rrq;
+            const p1_net = p1_brut * (1 - taxRate);
+            
+            document.getElementById('p1_base').innerText = formatCurrency(basePensionMensuelle);
+            document.getElementById('p1_sv').innerText = formatCurrency(p1_sv);
+            document.getElementById('p1_rrq').innerText = formatCurrency(p1_rrq);
+            document.getElementById('p1_total_brut').innerText = formatCurrency(p1_brut);
+            document.getElementById('p1_total_net').innerText = formatCurrency(p1_net);
+
+            document.getElementById('p1_sv_container').style.opacity = p1_sv === 0 ? '0.3' : '1';
+            document.getElementById('p1_rrq_container').style.opacity = p1_rrq === 0 ? '0.3' : '1';
+
+            // Timeline - Phase 2 (De 60 à 65 ans)
+            const p2_sv = isEligibleSV ? bridgeSVAmt : 0;
+            const p2_brut = basePensionMensuelle + p2_sv + rrqGovtMensuel;
+            const p2_net = p2_brut * (1 - taxRate);
+
+            document.getElementById('p2_base').innerText = formatCurrency(basePensionMensuelle);
+            document.getElementById('p2_sv').innerText = formatCurrency(p2_sv);
+            
+            if (askRRQ) {
+                document.getElementById('p2_rrq_govt_container').style.display = 'flex';
+                document.getElementById('p2_rrq_govt').innerText = formatCurrency(rrqGovtMensuel);
+            } else {
+                document.getElementById('p2_rrq_govt_container').style.display = 'none';
+            }
+
+            document.getElementById('p2_total_brut').innerText = formatCurrency(p2_brut);
+            document.getElementById('p2_total_net').innerText = formatCurrency(p2_net);
+            document.getElementById('p2_sv_container').style.opacity = p2_sv === 0 ? '0.3' : '1';
+
+            // Timeline - Phase 3 (65 ans et +)
+            const p3_brut = basePensionMensuelle + rrqGovtMensuel + svGovtMensuel;
+            const p3_net = p3_brut * (1 - taxRate);
+
+            document.getElementById('p3_base').innerText = formatCurrency(basePensionMensuelle);
+            
+            if (askRRQ) {
+                document.getElementById('p3_rrq_govt_container').style.display = 'flex';
+                document.getElementById('p3_rrq_govt').innerText = formatCurrency(rrqGovtMensuel);
+            } else {
+                document.getElementById('p3_rrq_govt_container').style.display = 'none';
+            }
+
+            if (askSV) {
+                document.getElementById('p3_sv_govt_container').style.display = 'flex';
+                document.getElementById('p3_sv_govt').innerText = formatCurrency(svGovtMensuel);
+            } else {
+                document.getElementById('p3_sv_govt_container').style.display = 'none';
+            }
+
+            document.getElementById('p3_end_msg').style.display = (askRRQ || askSV) ? 'none' : 'flex';
+
+            document.getElementById('p3_total_brut').innerText = formatCurrency(p3_brut);
+            document.getElementById('p3_total_net').innerText = formatCurrency(p3_net);
+
+            // Surbrillance Phase
+            document.getElementById('phase_1').classList.remove('active-phase');
+            document.getElementById('phase_2').classList.remove('active-phase');
+            document.getElementById('phase_3').classList.remove('active-phase');
+
+            if (ageYears < 60) {
+                document.getElementById('phase_1').classList.add('active-phase');
+            } else if (ageYears >= 60 && ageYears < 65) {
+                document.getElementById('phase_2').classList.add('active-phase');
+            } else {
+                document.getElementById('phase_3').classList.add('active-phase');
+            }
+        }
+
+        window.onload = () => {
+            toggleInputs();
+            calculate();
+        };
+    </script>
+</body>
+</html>
