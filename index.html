@@ -136,7 +136,7 @@
         .checkbox-label input { margin-right: 8px; transform: scale(1.1); }
 
         /* Results Styles */
-        .results-panel { display: flex; flex-direction: column; overflow: hidden; }
+        .results-panel { display: flex; flex-direction: column; overflow-y: auto; }
 
         .summary-cards {
             display: grid;
@@ -160,7 +160,7 @@
         .card-value.net { color: var(--accent-success); }
         .card-value.danger { color: var(--accent-danger); font-size: 1.1rem; }
 
-        .timeline-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; flex: 1; min-height: 0; }
+        .timeline-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; flex: 1; min-height: 0; transition: all 0.3s ease; }
 
         .timeline-phase {
             background: rgba(255, 255, 255, 0.03);
@@ -264,9 +264,15 @@
                 </div>
             </div>
 
-            <div class="form-group">
-                <label>Max Mensuel RRQ actuel ($)</label>
-                <input type="number" id="in_rrq_max" class="form-control" value="1507.65" min="0">
+            <div class="input-row">
+                <div class="form-group">
+                    <label title="Sert au calcul du Pont RRQ">Max Mensuel RRQ (Pont)</label>
+                    <input type="number" id="in_rrq_max" class="form-control" value="1507.65" min="0" oninput="calculate()">
+                </div>
+                <div class="form-group">
+                    <label title="Sert au calcul de votre rente gouvernementale">Votre RRQ acquise ($)</label>
+                    <input type="number" id="in_rrq_65_estim" class="form-control" value="1000" min="0" oninput="calculate()">
+                </div>
             </div>
 
             <!-- NOUVELLE SECTION : Compensations gouvernementales -->
@@ -279,16 +285,17 @@
                 <div style="margin-bottom: 8px;">
                     <label class="checkbox-label">
                         <input type="checkbox" id="chk_rrq_60" onchange="toggleInputs()"> 
-                        Demander la RRQ à 60 ans
+                        Demander la RRQ entre 60 et 72 ans
                     </label>
                     <div id="rrq_input_container" style="display: none; margin-top: 6px; margin-left: 24px;">
                         <div style="margin-bottom: 6px;">
-                            <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2px; display:block;">Votre RRQ estimée à 65 ans ($)</label>
-                            <input type="number" id="in_rrq_65_estim" class="form-control" value="1000" min="0" style="padding: 4px 8px; font-size:0.85rem;">
+                            <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2px; display:block;">Âge de la demande (60 à 72)</label>
+                            <input type="number" id="in_rrq_age" class="form-control" value="60" min="60" max="72" step="0.5" style="padding: 4px 8px; font-size:0.85rem;" oninput="updateRRQPercent()">
                         </div>
+
                         <div>
-                            <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2px; display:block;">% conservé à 60 ans (après pénalité)</label>
-                            <input type="number" id="in_rrq_percent" class="form-control" value="64" min="0" max="100" style="padding: 4px 8px; font-size:0.85rem;">
+                            <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2px; display:block;">% conservé calculé automatiquement</label>
+                            <input type="number" id="in_rrq_percent" class="form-control" value="64" readonly style="padding: 4px 8px; font-size:0.85rem; background: rgba(0,0,0,0.2); color: #a78bfa; font-weight: 600;">
                         </div>
                     </div>
                 </div>
@@ -297,11 +304,21 @@
                 <div>
                     <label class="checkbox-label">
                         <input type="checkbox" id="chk_sv_65" onchange="toggleInputs()"> 
-                        Demander la SV à 65 ans
+                        Demander la SV (65 à 70 ans)
                     </label>
                     <div id="sv_input_container" style="display: none; margin-top: 6px; margin-left: 24px;">
-                        <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2px; display:block;">Montant SV ($/mois)</label>
-                        <input type="number" id="in_sv_amount" class="form-control" value="743.05" min="0" style="padding: 4px 8px; font-size:0.85rem;">
+                        <div style="margin-bottom: 6px;">
+                            <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2px; display:block;">Âge de la demande (65 à 70)</label>
+                            <input type="number" id="in_sv_age" class="form-control" value="65" min="65" max="70" step="0.5" style="padding: 4px 8px; font-size:0.85rem;" oninput="updateSVPercent()">
+                        </div>
+                        <div style="margin-bottom: 6px;">
+                            <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2px; display:block;">Montant SV à 65 ans ($/mois)</label>
+                            <input type="number" id="in_sv_amount" class="form-control" value="743.05" min="0" style="padding: 4px 8px; font-size:0.85rem;" oninput="calculate()">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2px; display:block;">% conservé calculé automatiquement</label>
+                            <input type="number" id="in_sv_percent" class="form-control" value="100" readonly style="padding: 4px 8px; font-size:0.85rem; background: rgba(0,0,0,0.2); color: #a78bfa; font-weight: 600;">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -330,43 +347,8 @@
 
             <h3 style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px; text-transform: uppercase;">Projection Mensuelle par Période</h3>
             
-            <div class="timeline-grid">
-                <!-- Phase 1 -->
-                <div class="timeline-phase active-phase animate-in" style="animation-delay: 0.4s;" id="phase_1">
-                    <div class="phase-title">Jusqu'à 60 ans <span class="phase-badge">Phase 1</span></div>
-                    <ul class="breakdown-list">
-                        <li class="breakdown-item"><span>Rente de base</span> <span id="p1_base">$0</span></li>
-                        <li class="breakdown-item" id="p1_sv_container"><span>Pont SV</span> <span id="p1_sv">$0</span></li>
-                        <li class="breakdown-item" id="p1_rrq_container"><span>Pont RRQ (70%)</span> <span id="p1_rrq">$0</span></li>
-                    </ul>
-                    <div class="phase-total"><span>Total Brut</span> <span id="p1_total_brut">$0</span></div>
-                    <div class="phase-net"><span>Total Net</span> <span id="p1_total_net">$0</span></div>
-                </div>
-
-                <!-- Phase 2 -->
-                <div class="timeline-phase animate-in" style="animation-delay: 0.5s;" id="phase_2">
-                    <div class="phase-title">De 60 à 65 ans <span class="phase-badge">Phase 2</span></div>
-                    <ul class="breakdown-list">
-                        <li class="breakdown-item"><span>Rente de base</span> <span id="p2_base">$0</span></li>
-                        <li class="breakdown-item" id="p2_sv_container"><span>Pont SV</span> <span id="p2_sv">$0</span></li>
-                        <li class="breakdown-item govt-income" id="p2_rrq_govt_container" style="display:none;"><span>RRQ Gouv.</span> <span id="p2_rrq_govt">$0</span></li>
-                    </ul>
-                    <div class="phase-total"><span>Total Brut</span> <span id="p2_total_brut">$0</span></div>
-                    <div class="phase-net"><span>Total Net</span> <span id="p2_total_net">$0</span></div>
-                </div>
-
-                <!-- Phase 3 -->
-                <div class="timeline-phase animate-in" style="animation-delay: 0.6s;" id="phase_3">
-                    <div class="phase-title">65 ans et + <span class="phase-badge">Phase 3</span></div>
-                    <ul class="breakdown-list">
-                        <li class="breakdown-item"><span>Rente de base</span> <span id="p3_base">$0</span></li>
-                        <li class="breakdown-item govt-income" id="p3_rrq_govt_container" style="display:none;"><span>RRQ Gouv.</span> <span id="p3_rrq_govt">$0</span></li>
-                        <li class="breakdown-item govt-income" id="p3_sv_govt_container" style="display:none;"><span>SV Gouv.</span> <span id="p3_sv_govt">$0</span></li>
-                        <li class="breakdown-item" id="p3_end_msg" style="color: var(--text-muted); font-style: italic; border: none;"><span>Fin des ponts de l'employeur</span></li>
-                    </ul>
-                    <div class="phase-total"><span>Total Brut</span> <span id="p3_total_brut">$0</span></div>
-                    <div class="phase-net"><span>Total Net</span> <span id="p3_total_net">$0</span></div>
-                </div>
+            <div class="timeline-grid" id="timeline_grid_container">
+                <!-- Phases generated by JS -->
             </div>
         </div>
     </div>
@@ -386,6 +368,31 @@
         function toggleInputs() {
             document.getElementById('rrq_input_container').style.display = document.getElementById('chk_rrq_60').checked ? 'block' : 'none';
             document.getElementById('sv_input_container').style.display = document.getElementById('chk_sv_65').checked ? 'block' : 'none';
+            calculate();
+        }
+
+        function updateRRQPercent() {
+            const age = parseFloat(document.getElementById('in_rrq_age').value) || 60;
+            let percent = 100;
+            if (age < 65) {
+                percent = 100 - ((65 - age) * 7.2);
+            } else if (age > 65) {
+                percent = 100 + ((age - 65) * 8.4);
+            }
+            if (percent < 0) percent = 0;
+            document.getElementById('in_rrq_percent').value = percent.toFixed(1);
+            calculate();
+        }
+
+        function updateSVPercent() {
+            const age = parseFloat(document.getElementById('in_sv_age').value) || 65;
+            let percent = 100;
+            if (age > 65) {
+                percent = 100 + ((age - 65) * 7.2); // 0.6% per month = 7.2% per year
+                if (percent > 136) percent = 136; // Max 36% at age 70
+            }
+            document.getElementById('in_sv_percent').value = percent.toFixed(1);
+            calculate();
         }
 
         function calculate() {
@@ -399,11 +406,27 @@
             const rrqMax = parseFloat(document.getElementById('in_rrq_max').value);
 
             // Options Gouvernementales
-            const askRRQ = document.getElementById('chk_rrq_60').checked;
+            let askRRQ = document.getElementById('chk_rrq_60').checked;
+            let rrqAge = parseFloat(document.getElementById('in_rrq_age').value) || 60;
             const rrq65Estim = parseFloat(document.getElementById('in_rrq_65_estim').value) || 0;
-            const rrqPercent = parseFloat(document.getElementById('in_rrq_percent').value) / 100 || 0;
-            const askSV = document.getElementById('chk_sv_65').checked;
-            const svAmount = parseFloat(document.getElementById('in_sv_amount').value) || 0;
+            let rrqPercent = parseFloat(document.getElementById('in_rrq_percent').value) / 100 || 0;
+            
+            let askSV = document.getElementById('chk_sv_65').checked;
+            const svBaseAmount = parseFloat(document.getElementById('in_sv_amount').value) || 0;
+            let svPercent = parseFloat(document.getElementById('in_sv_percent').value) / 100 || 1;
+            let svAge = parseFloat(document.getElementById('in_sv_age').value) || 65;
+
+            // Règle automatique : si non réclamé, versement automatique aux âges maximaux
+            if (!askRRQ) {
+                askRRQ = true;
+                rrqAge = 72;
+                rrqPercent = 1 + ((72 - 65) * 0.084); // 158.8%
+            }
+            if (!askSV) {
+                askSV = true;
+                svAge = 70;
+                svPercent = 1.36; // 136%
+            }
 
             const totalAgeInMonths = (ageYears * 12) + ageMonths;
             const targetAgeInMonths = CONSTANTES.AGE_NORMAL_RETRAITE * 12;
@@ -470,78 +493,124 @@
 
             // Montants Gouvernementaux optionnels
             const rrqGovtMensuel = askRRQ ? (rrq65Estim * rrqPercent) : 0;
-            const svGovtMensuel = askSV ? svAmount : 0;
+            const svGovtMensuel = askSV ? (svBaseAmount * svPercent) : 0;
 
-            // 5. Timeline - Phase 1 (Jusqu'à 60 ans)
-            const p1_sv = isEligibleSV ? bridgeSVAmt : 0;
-            const p1_rrq = isEligibleRRQ ? bridgeRRQAmt : 0;
-            const p1_brut = basePensionMensuelle + p1_sv + p1_rrq;
-            const p1_net = p1_brut * (1 - taxRate);
+            // 5. Génération Dynamique du Timeline
+            const timelineContainer = document.getElementById('timeline_grid_container');
+            timelineContainer.innerHTML = '';
             
-            document.getElementById('p1_base').innerText = formatCurrency(basePensionMensuelle);
-            document.getElementById('p1_sv').innerText = formatCurrency(p1_sv);
-            document.getElementById('p1_rrq').innerText = formatCurrency(p1_rrq);
-            document.getElementById('p1_total_brut').innerText = formatCurrency(p1_brut);
-            document.getElementById('p1_total_net').innerText = formatCurrency(p1_net);
-
-            document.getElementById('p1_sv_container').style.opacity = p1_sv === 0 ? '0.3' : '1';
-            document.getElementById('p1_rrq_container').style.opacity = p1_rrq === 0 ? '0.3' : '1';
-
-            // Timeline - Phase 2 (De 60 à 65 ans)
-            const p2_sv = isEligibleSV ? bridgeSVAmt : 0;
-            const p2_brut = basePensionMensuelle + p2_sv + rrqGovtMensuel;
-            const p2_net = p2_brut * (1 - taxRate);
-
-            document.getElementById('p2_base').innerText = formatCurrency(basePensionMensuelle);
-            document.getElementById('p2_sv').innerText = formatCurrency(p2_sv);
+            // Collecte des jalons d'âge où les revenus changent
+            let milestones = [60, 65];
+            if (askRRQ && rrqAge !== 60 && rrqAge !== 65) milestones.push(rrqAge);
+            if (askSV && svAge !== 65) milestones.push(svAge);
             
-            if (askRRQ) {
-                document.getElementById('p2_rrq_govt_container').style.display = 'flex';
-                document.getElementById('p2_rrq_govt').innerText = formatCurrency(rrqGovtMensuel);
-            } else {
-                document.getElementById('p2_rrq_govt_container').style.display = 'none';
-            }
-
-            document.getElementById('p2_total_brut').innerText = formatCurrency(p2_brut);
-            document.getElementById('p2_total_net').innerText = formatCurrency(p2_net);
-            document.getElementById('p2_sv_container').style.opacity = p2_sv === 0 ? '0.3' : '1';
-
-            // Timeline - Phase 3 (65 ans et +)
-            const p3_brut = basePensionMensuelle + rrqGovtMensuel + svGovtMensuel;
-            const p3_net = p3_brut * (1 - taxRate);
-
-            document.getElementById('p3_base').innerText = formatCurrency(basePensionMensuelle);
+            // Supprimer les doublons et trier
+            milestones = [...new Set(milestones)].sort((a, b) => a - b);
             
-            if (askRRQ) {
-                document.getElementById('p3_rrq_govt_container').style.display = 'flex';
-                document.getElementById('p3_rrq_govt').innerText = formatCurrency(rrqGovtMensuel);
-            } else {
-                document.getElementById('p3_rrq_govt_container').style.display = 'none';
+            let intervals = [];
+            let prev = 0;
+            for (let i = 0; i < milestones.length; i++) {
+                intervals.push({ start: prev, end: milestones[i] });
+                prev = milestones[i];
             }
-
-            if (askSV) {
-                document.getElementById('p3_sv_govt_container').style.display = 'flex';
-                document.getElementById('p3_sv_govt').innerText = formatCurrency(svGovtMensuel);
-            } else {
-                document.getElementById('p3_sv_govt_container').style.display = 'none';
-            }
-
-            document.getElementById('p3_end_msg').style.display = (askRRQ || askSV) ? 'none' : 'flex';
-
-            document.getElementById('p3_total_brut').innerText = formatCurrency(p3_brut);
-            document.getElementById('p3_total_net').innerText = formatCurrency(p3_net);
-
-            // Surbrillance Phase
-            document.getElementById('phase_1').classList.remove('active-phase');
-            document.getElementById('phase_2').classList.remove('active-phase');
-            document.getElementById('phase_3').classList.remove('active-phase');
-
-            if (ageYears < 60) {
-                document.getElementById('phase_1').classList.add('active-phase');
-            } else if (ageYears >= 60 && ageYears < 65) {
-                document.getElementById('phase_2').classList.add('active-phase');
-            } else {
-                document.getElementById('phase_3').classList.add('active-phase');
+            intervals.push({ start: prev, end: Infinity });
+            
+            let phaseNumber = 1;
+            
+            intervals.forEach((interval, index) => {
+                const isInf = interval.end === Infinity;
+                
+                // Étiquette de Phase
+                let phaseLabel = `Phase ${phaseNumber}`;
+                if (interval.start === 0) {
+                    phaseLabel = `Phase 1`;
+                    phaseNumber++;
+                } else if (interval.start >= 60 && interval.start < 65) {
+                    const p2Count = intervals.filter(i => i.start >= 60 && i.end <= 65).length;
+                    if (p2Count > 1) {
+                        const idx = intervals.filter(i => i.start >= 60 && i.end <= 65).indexOf(interval);
+                        phaseLabel = `Phase 2${String.fromCharCode(65 + idx)}`;
+                    } else {
+                        phaseLabel = `Phase 2`;
+                    }
+                    if (interval.end === 65) phaseNumber++;
+                } else if (interval.start >= 65) {
+                    const p3Count = intervals.filter(i => i.start >= 65).length;
+                    if (p3Count > 1) {
+                        const idx = intervals.filter(i => i.start >= 65).indexOf(interval);
+                        phaseLabel = `Phase 3${String.fromCharCode(65 + idx)}`;
+                    } else {
+                        phaseLabel = `Phase 3`;
+                    }
+                }
+                
+                let title = '';
+                if (interval.start === 0) title = `Jusqu'à 60 ans`;
+                else if (isInf) title = `${interval.start} ans et +`;
+                else title = `De ${interval.start} à ${interval.end} ans`;
+                
+                let showSVBridge = false;
+                let showRRQBridge = false;
+                let showSVGovt = false;
+                let showRRQGovt = false;
+                
+                if (interval.start < 65) {
+                    if (isEligibleSV) showSVBridge = true;
+                    if (isEligibleRRQ && interval.start < 60) showRRQBridge = true;
+                }
+                
+                if (askRRQ && interval.start >= rrqAge) showRRQGovt = true;
+                if (askSV && interval.start >= svAge) showSVGovt = true;
+                
+                let p_sv_bridge = showSVBridge ? bridgeSVAmt : 0;
+                let p_rrq_bridge = showRRQBridge ? bridgeRRQAmt : 0;
+                let p_sv_govt = showSVGovt ? svGovtMensuel : 0;
+                let p_rrq_govt = showRRQGovt ? rrqGovtMensuel : 0;
+                
+                let p_brut = basePensionMensuelle + p_sv_bridge + p_rrq_bridge + p_sv_govt + p_rrq_govt;
+                let p_net = p_brut * (1 - taxRate);
+                
+                let isActive = false;
+                if (ageYears >= interval.start && (isInf || ageYears < interval.end)) isActive = true;
+                
+                let html = `
+                <div class="timeline-phase animate-in ${isActive ? 'active-phase' : ''}" style="animation-delay: ${0.4 + (index*0.05)}s;">
+                    <div class="phase-title"><span>${title}</span> <span class="phase-badge">${phaseLabel}</span></div>
+                    <ul class="breakdown-list">
+                        <li class="breakdown-item"><span>Rente de base</span> <span>${formatCurrency(basePensionMensuelle)}</span></li>
+                `;
+                
+                if (interval.start < 65) {
+                    html += `<li class="breakdown-item" style="opacity: ${showSVBridge ? '1' : '0.3'}"><span>Pont SV</span> <span>${formatCurrency(p_sv_bridge)}</span></li>`;
+                    if (interval.start < 60) {
+                        html += `<li class="breakdown-item" style="opacity: ${showRRQBridge ? '1' : '0.3'}"><span>Pont RRQ (70%)</span> <span>${formatCurrency(p_rrq_bridge)}</span></li>`;
+                    }
+                }
+                
+                if (interval.start >= 60 && askRRQ && showRRQGovt) {
+                    html += `<li class="breakdown-item govt-income"><span>RRQ Gouv.</span> <span>${formatCurrency(p_rrq_govt)}</span></li>`;
+                }
+                
+                if (interval.start >= 65 && askSV && showSVGovt) {
+                    html += `<li class="breakdown-item govt-income" style="color:#f59e0b;"><span>SV Gouv.</span> <span>${formatCurrency(p_sv_govt)}</span></li>`;
+                }
+                
+                if (interval.start >= 65 && !showRRQGovt && !showSVGovt) {
+                    html += `<li class="breakdown-item" style="color: var(--text-muted); font-style: italic; border: none;"><span>Fin des ponts...</span></li>`;
+                }
+                
+                html += `
+                    </ul>
+                    <div class="phase-total"><span>Total Brut</span> <span>${formatCurrency(p_brut)}</span></div>
+                    <div class="phase-net"><span>Total Net</span> <span>${formatCurrency(p_net)}</span></div>
+                </div>
+                `;
+                
+                timelineContainer.innerHTML += html;
+            });
+            
+            if (window.innerWidth > 950) {
+                timelineContainer.style.gridTemplateColumns = `repeat(${Math.min(intervals.length, 4)}, 1fr)`;
             }
         }
 
