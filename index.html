@@ -510,34 +510,44 @@
             let intervals = [];
             let prev = 0;
             for (let i = 0; i < milestones.length; i++) {
-                intervals.push({ start: prev, end: milestones[i] });
+                intervals.push({ originalStart: prev, start: prev, end: milestones[i] });
                 prev = milestones[i];
             }
-            intervals.push({ start: prev, end: Infinity });
+            intervals.push({ originalStart: prev, start: prev, end: Infinity });
+            
+            // Filtrer pour ne commencer qu'à l'âge actuel
+            const currentAgeDecimal = ageYears + (ageMonths / 12);
+            intervals = intervals.filter(interval => interval.end > currentAgeDecimal);
+            
+            if (intervals.length > 0) {
+                if (currentAgeDecimal > intervals[0].start) {
+                    intervals[0].start = currentAgeDecimal;
+                }
+            }
             
             let phaseNumber = 1;
             
             intervals.forEach((interval, index) => {
                 const isInf = interval.end === Infinity;
                 
-                // Étiquette de Phase
+                // Étiquette de Phase (basée sur la structure originale)
                 let phaseLabel = `Phase ${phaseNumber}`;
-                if (interval.start === 0) {
+                if (interval.originalStart === 0) {
                     phaseLabel = `Phase 1`;
                     phaseNumber++;
-                } else if (interval.start >= 60 && interval.start < 65) {
-                    const p2Count = intervals.filter(i => i.start >= 60 && i.end <= 65).length;
+                } else if (interval.originalStart >= 60 && interval.originalStart < 65) {
+                    const p2Count = intervals.filter(i => i.originalStart >= 60 && i.end <= 65).length;
                     if (p2Count > 1) {
-                        const idx = intervals.filter(i => i.start >= 60 && i.end <= 65).indexOf(interval);
+                        const idx = intervals.filter(i => i.originalStart >= 60 && i.end <= 65).indexOf(interval);
                         phaseLabel = `Phase 2${String.fromCharCode(65 + idx)}`;
                     } else {
                         phaseLabel = `Phase 2`;
                     }
                     if (interval.end === 65) phaseNumber++;
-                } else if (interval.start >= 65) {
-                    const p3Count = intervals.filter(i => i.start >= 65).length;
+                } else if (interval.originalStart >= 65) {
+                    const p3Count = intervals.filter(i => i.originalStart >= 65).length;
                     if (p3Count > 1) {
-                        const idx = intervals.filter(i => i.start >= 65).indexOf(interval);
+                        const idx = intervals.filter(i => i.originalStart >= 65).indexOf(interval);
                         phaseLabel = `Phase 3${String.fromCharCode(65 + idx)}`;
                     } else {
                         phaseLabel = `Phase 3`;
@@ -545,9 +555,15 @@
                 }
                 
                 let title = '';
-                if (interval.start === 0) title = `Jusqu'à 60 ans`;
-                else if (isInf) title = `${interval.start} ans et +`;
-                else title = `De ${interval.start} à ${interval.end} ans`;
+                const formatAge = (age) => age === Math.floor(age) ? age : age.toFixed(1).replace('.', ',');
+                
+                if (index === 0) {
+                    if (isInf) title = `Maintenant (${formatAge(interval.start)} ans) et +`;
+                    else title = `Maintenant à ${formatAge(interval.end)} ans`;
+                } else {
+                    if (isInf) title = `${formatAge(interval.start)} ans et +`;
+                    else title = `De ${formatAge(interval.start)} à ${formatAge(interval.end)} ans`;
+                }
                 
                 let showSVBridge = false;
                 let showRRQBridge = false;
@@ -570,8 +586,7 @@
                 let p_brut = basePensionMensuelle + p_sv_bridge + p_rrq_bridge + p_sv_govt + p_rrq_govt;
                 let p_net = p_brut * (1 - taxRate);
                 
-                let isActive = false;
-                if (ageYears >= interval.start && (isInf || ageYears < interval.end)) isActive = true;
+                let isActive = (index === 0);
                 
                 let html = `
                 <div class="timeline-phase animate-in ${isActive ? 'active-phase' : ''}" style="animation-delay: ${0.4 + (index*0.05)}s;">
